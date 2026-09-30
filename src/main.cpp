@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 #include <optional>
 #include <vector>
@@ -9,6 +10,8 @@ const int WINDOW_HEIGHT = 800;
 const int FPS_LIMIT = 30;
 const int CURVE_SAMPLES = 100;
 const float CONTROL_POINT_RADIUS = 7.0f;
+const float SQUARE_SIZE = 18.0f;
+const float ANIMATION_DURATION_SECONDS = 4.0f;
 
 using Point2D = sf::Vector2f;
 
@@ -31,10 +34,16 @@ Point2D getPoint(const std::vector<sf::Vector2f>& pts, float t) {
     return b0 * pts[0] + b1 * pts[1] + b2 * pts[2] + b3 * pts[3];
 }
 
-// TODO: (Part 2) Define a function that returns the curve's slope at t in [0, 1].
-Point2D getSlope(const std::vector<sf::Vector2f>& pts, float t) { return Point2D{}; }
+// Returns the tangent (derivative) of a cubic Bézier curve at t in [0, 1].
+Point2D getSlope(const std::vector<sf::Vector2f>& pts, float t) {
+    const float u = 1.0f - t;
 
-// TODO: (Part 2) Track animation time for the square moving along the curve.
+    return 3.0f * u * u * (pts[1] - pts[0]) + 6.0f * u * t * (pts[2] - pts[1]) +
+           3.0f * t * t * (pts[3] - pts[2]);
+}
+
+sf::Clock animationClock;
+
 // TODO: (Part 3) Track the index of the control point being dragged.
 
 void handleInput(sf::Window& window, bool& shouldQuit) {
@@ -80,10 +89,21 @@ void render(sf::RenderWindow& window) {
         window.draw(controlPoint);
     }
 
-    // ====== ====== ======
-    // TODO: (Part 2) Draw a small square moving repeatedly along the curve.
-    // Use GetSlope to orient it to the curve at each time step.
-    // ====== ====== ======
+    // Part 2: move a square along the curve and align it with the tangent.
+    const float elapsedSeconds = animationClock.getElapsedTime().asSeconds();
+    const float t = std::fmod(elapsedSeconds, ANIMATION_DURATION_SECONDS) /
+                    ANIMATION_DURATION_SECONDS;
+    const Point2D position = getPoint(controlPoints, t);
+    const Point2D slope = getSlope(controlPoints, t);
+    const float angleDegrees = std::atan2(slope.y, slope.x) * 180.0f / std::acos(-1.0f);
+
+    sf::RectangleShape square({SQUARE_SIZE, SQUARE_SIZE});
+    square.setOrigin({SQUARE_SIZE / 2.0f, SQUARE_SIZE / 2.0f});
+    square.setPosition(position);
+    square.setRotation(sf::degrees(angleDegrees));
+    square.setFillColor(sf::Color::Magenta);
+    window.draw(square);
+
 
     // ====== ====== ======
     // TODO: (Part 3) Draw control handles from point 1 to 2 and point 3 to 4.
