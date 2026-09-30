@@ -7,16 +7,33 @@
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 800;
 const int FPS_LIMIT = 30;
+const int CURVE_SAMPLES = 100;
+const float CONTROL_POINT_RADIUS = 7.0f;
 
 using Point2D = sf::Vector2f;
 
-// TODO: (Part 1) Define a function that samples a cubic Bezier curve at t in [0, 1].
-Point2D getPoint(const std::vector<sf::Vector2f>& pts, float t) { return Point2D{}; }
+// Part 1: four cubic Bézier control points, ordered from the curve's start to end.
+const std::vector<Point2D> controlPoints = {
+    {100.0f, 600.0f},
+    {200.0f, 100.0f},
+    {600.0f, 100.0f},
+    {700.0f, 600.0f},
+};
+
+// Returns the point on a cubic Bézier curve at t in [0, 1].
+Point2D getPoint(const std::vector<sf::Vector2f>& pts, float t) {
+    const float u = 1.0f - t;
+    const float b0 = u * u * u;
+    const float b1 = 3.0f * u * u * t;
+    const float b2 = 3.0f * u * t * t;
+    const float b3 = t * t * t;
+
+    return b0 * pts[0] + b1 * pts[1] + b2 * pts[2] + b3 * pts[3];
+}
 
 // TODO: (Part 2) Define a function that returns the curve's slope at t in [0, 1].
 Point2D getSlope(const std::vector<sf::Vector2f>& pts, float t) { return Point2D{}; }
 
-// TODO: (Part 1) Store four control points for the curve.
 // TODO: (Part 2) Track animation time for the square moving along the curve.
 // TODO: (Part 3) Track the index of the control point being dragged.
 
@@ -44,10 +61,24 @@ void handleInput(sf::Window& window, bool& shouldQuit) {
 
 void render(sf::RenderWindow& window) {
     window.clear(sf::Color::Black);
-    // ====== ====== ======
-    // TODO: (Part 1) Sample GetPoint over t in [0, 1] and connect samples using the line-drawing
-    // code from your project. Draw all four control points as circles after drawing the curve.
-    // ====== ====== ======
+
+    // Part 1: approximate the curve with short lines between sampled points.
+    sf::VertexArray curve(sf::PrimitiveType::LineStrip, CURVE_SAMPLES + 1);
+    for (int i = 0; i <= CURVE_SAMPLES; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(CURVE_SAMPLES);
+        curve[i].position = getPoint(controlPoints, t);
+        curve[i].color = sf::Color::Cyan;
+    }
+    window.draw(curve);
+
+    // Draw the four control points after the curve so they remain easy to see.
+    sf::CircleShape controlPoint(CONTROL_POINT_RADIUS);
+    controlPoint.setOrigin({CONTROL_POINT_RADIUS, CONTROL_POINT_RADIUS});
+    controlPoint.setFillColor(sf::Color::Yellow);
+    for (const Point2D& point : controlPoints) {
+        controlPoint.setPosition(point);
+        window.draw(controlPoint);
+    }
 
     // ====== ====== ======
     // TODO: (Part 2) Draw a small square moving repeatedly along the curve.
