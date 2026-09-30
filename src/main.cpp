@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <vector>
 
@@ -16,7 +17,7 @@ const float ANIMATION_DURATION_SECONDS = 4.0f;
 using Point2D = sf::Vector2f;
 
 // Part 1: four cubic Bézier control points, ordered from the curve's start to end.
-const std::vector<Point2D> controlPoints = {
+std::vector<Point2D> controlPoints = {
     {100.0f, 600.0f},
     {200.0f, 100.0f},
     {600.0f, 100.0f},
@@ -44,7 +45,8 @@ Point2D getSlope(const std::vector<sf::Vector2f>& pts, float t) {
 
 sf::Clock animationClock;
 
-// TODO: (Part 3) Track the index of the control point being dragged.
+// Part 3: -1 means no control point is currently being dragged.
+int selectedPointIndex = -1;
 
 void handleInput(sf::Window& window, bool& shouldQuit) {
     while (const std::optional<sf::Event> event = window.pollEvent()) {
@@ -52,12 +54,34 @@ void handleInput(sf::Window& window, bool& shouldQuit) {
             window.close();
             shouldQuit = true;
         } else if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>()) {
-            // TODO: (Part 3) On left-click, select the closest control point
-            // using mouse->position and start dragging it.
+            if (mouse->button == sf::Mouse::Button::Left) {
+                const Point2D mousePosition = {
+                    static_cast<float>(mouse->position.x),
+                    static_cast<float>(mouse->position.y),
+                };
+
+                float closestDistanceSquared = std::numeric_limits<float>::max();
+                for (std::size_t i = 0; i < controlPoints.size(); ++i) {
+                    const Point2D offset = controlPoints[i] - mousePosition;
+                    const float distanceSquared = offset.x * offset.x + offset.y * offset.y;
+                    if (distanceSquared < closestDistanceSquared) {
+                        closestDistanceSquared = distanceSquared;
+                        selectedPointIndex = static_cast<int>(i);
+                    }
+                }
+            }
         } else if (const auto* mouse = event->getIf<sf::Event::MouseButtonReleased>()) {
-            // TODO: (Part 3) On left-button release, stop dragging.
+            if (mouse->button == sf::Mouse::Button::Left) {
+                selectedPointIndex = -1;
+            }
         } else if (const auto* mouse = event->getIf<sf::Event::MouseMoved>()) {
-            // TODO: (Part 3) Move the selected control point to mouse->position.
+            if (selectedPointIndex >= 0) {
+                controlPoints[static_cast<std::size_t>(selectedPointIndex)] = {
+                    static_cast<float>(mouse->position.x),
+                    static_cast<float>(mouse->position.y),
+                };
+            }
+
             // TODO: (Part 4) Maintain matching slopes at shared endpoints.
             // When moving point 3, move point 5 without changing its distance
             // from point 4 (point numbers here start at 1).
@@ -70,6 +94,14 @@ void handleInput(sf::Window& window, bool& shouldQuit) {
 
 void render(sf::RenderWindow& window) {
     window.clear(sf::Color::Black);
+
+    // Part 3: draw the two control handles before drawing the curve.
+    sf::VertexArray handles(sf::PrimitiveType::Lines, 4);
+    handles[0] = sf::Vertex{controlPoints[0], sf::Color(100, 100, 100)};
+    handles[1] = sf::Vertex{controlPoints[1], sf::Color(100, 100, 100)};
+    handles[2] = sf::Vertex{controlPoints[2], sf::Color(100, 100, 100)};
+    handles[3] = sf::Vertex{controlPoints[3], sf::Color(100, 100, 100)};
+    window.draw(handles);
 
     // Part 1: approximate the curve with short lines between sampled points.
     sf::VertexArray curve(sf::PrimitiveType::LineStrip, CURVE_SAMPLES + 1);
@@ -105,10 +137,8 @@ void render(sf::RenderWindow& window) {
     window.draw(square);
 
 
-    // ====== ====== ======
-    // TODO: (Part 3) Draw control handles from point 1 to 2 and point 3 to 4.
     // TODO: (Part 4) Draw all connected cubic Bezier segments and their handles.
-    // ====== ====== ======
+
 
     // ====== ====== ======
     // TODO: (Bonus) Support multiple curves, a Galaga screen overlay at a 1:2 ratio, and exporting
